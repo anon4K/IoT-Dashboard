@@ -1,0 +1,90 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Security Dashboard</title>
+    <link rel="stylesheet" href="{% static 'dashboard/style.css' %}">
+</head>
+
+<body>
+
+<header>
+    <h2>Smart Security Dashboard</h2>
+    <div class="user-info">
+        <span>{{ request.user.username }}</span> |
+        <a href="{% url 'logout' %}" class="logout">Logout</a>
+    </div>
+</header>
+
+<div class="container">
+
+{% if device_data %}
+    {% for item in device_data %}
+
+        {% if item.alert %}
+            <div class="alert-banner">
+                🚨 INTRUSION DETECTED ON {{ item.device.name }}
+            </div>
+        {% endif %}
+
+        <!-- ✅ REQUIRED WRAPPER -->
+        <div class="device-card" data-device-id="{{ item.device.device_id }}">
+
+            <div class="device-header">
+                <h3>{{ item.device.name }}</h3>
+
+                <span class="badge {% if item.device.is_armed %}green{% else %}red{% endif %}">
+                    {% if item.device.is_armed %}ARMED{% else %}DISARMED{% endif %}
+                </span>
+            </div>
+
+            <button class="arm-btn" data-device-id="{{ item.device.device_id }}">
+                {% if item.device.is_armed %}Disarm{% else %}Arm{% endif %}
+            </button>
+
+            <table class="sensor-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Temp (°C)</th>
+                        <th>Humidity (%)</th>
+                        <th>Distance (cm)</th>
+                        <th>Sensor</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                {% for data in item.sensor_data %}
+                    <tr class="{% if data.sensor_type == 'motion' or data.distance < 50 %}alert-row{% endif %}">
+                        <td>{{ data.timestamp|date:"H:i:s" }}</td>
+                        <td>{{ data.temperature }}</td>
+                        <td>{{ data.humidity }}</td>
+                        <td>{{ data.distance }}</td>
+                        <td>{{ data.sensor_type }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="5">No sensor data yet</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    {% endfor %}
+{% else %}
+    <p>No devices linked to your account yet.</p>
+{% endif %}
+
+</div>
+
+<!-- CSRF TOKEN FOR JS -->
+<form style="display:none">
+    {% csrf_token %}
+</form>
+
+<script src="{% static 'dashboard/dashboard.js' %}"></script>
+
+</body>
+</html>
