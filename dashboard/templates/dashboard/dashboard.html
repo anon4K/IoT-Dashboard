@@ -84,7 +84,10 @@
     {% csrf_token %}
 </form>
 
+<audio id="buzzer-sound" src="{% static 'dashboard/buzzer.mp3' %}" preload="auto"></audio>
+
 <script src="{% static 'dashboard/dashboard.js' %}"></script>
 
 </body>
 </html>
+

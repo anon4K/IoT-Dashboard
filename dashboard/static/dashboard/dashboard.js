@@ -67,3 +67,28 @@ document.addEventListener("DOMContentLoaded", () => {
 function getCSRFToken() {
     return document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 }
+
+function playBuzzer() {
+    const buzzer = document.getElementById('buzzer-sound');
+    buzzer.play().catch(err => console.log("Audio play error:", err));
+}
+
+// Trigger buzzer for alert rows only
+document.querySelectorAll('.alert-row').forEach(row => {
+    const isArmed = row.closest('.device-card').querySelector('.badge').classList.contains('green');
+    if (isArmed) {
+        playBuzzer();
+    }
+});
+
+function scrollToLatestAlert() {
+    const alerts = document.querySelectorAll('.alert-row');
+    if (alerts.length > 0) {
+        const lastAlert = alerts[alerts.length - 1];
+        lastAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    scrollToLatestAlert();
+});
