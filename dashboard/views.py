@@ -10,6 +10,12 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth.views import LoginView
+from .forms import CustomLoginForm
+
+class CustomLoginView(LoginView):
+    template_name = "dashboard/login.html"
+    authentication_form = CustomLoginForm
 
 @login_required
 @csrf_exempt
@@ -108,17 +114,17 @@ def dashboard_view(request):
 
 
 
-def login_view(request):
-    if request.method == "POST":
-        form = AuthenticationForm(request, data=request.POST)
-        if form.is_valid():
-            user = form.get_user()
-            login(request, user)
-            next_url = request.GET.get('next') or '/'
-            return redirect(next_url)
-    else:
-        form = AuthenticationForm()
-    return render(request, "dashboard/login.html", {"form": form})
+# def login_view(request):
+#     if request.method == "POST":
+#         form = AuthenticationForm(request, data=request.POST)
+#         if form.is_valid():
+#             user = form.get_user()
+#             login(request, user)
+#             next_url = request.GET.get('next') or '/'
+#             return redirect(next_url)
+#     else:
+#         form = AuthenticationForm()
+#     return render(request, "dashboard/login.html", {"form": form})
 
 def logout_view(request):
     logout(request)
