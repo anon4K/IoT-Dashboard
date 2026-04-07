@@ -1,6 +1,8 @@
 from django.shortcuts import render, redirect
-from .models import Device, SensorData
-from rest_framework.decorators import api_view
+from .models import Device, SensorData, APIKey
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from .authentication import APIKeyAuthentication
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .serializers import SensorDataSerializer
 from rest_framework import status
@@ -12,6 +14,8 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.views import LoginView
 from .forms import CustomLoginForm
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 
 class CustomLoginView(LoginView):
     template_name = "dashboard/login.html"
@@ -31,22 +35,49 @@ def toggle_arm(request, device_id):
 
 
 @api_view(['POST'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([IsAuthenticated])
 def add_sensor_data(request, device_id):
     try:
         device = Device.objects.get(device_id=device_id)
     except Device.DoesNotExist:
         return Response({"error": "Device not found."}, status=status.HTTP_404_NOT_FOUND)
 
+    if request.auth.device != device:
+        return Response({"error": "API key does not match device."}, status=status.HTTP_403_FORBIDDEN)
+
+    from django.utils import timezone
+    device.last_seen = timezone.now()
+    device.save(update_fields=['last_seen'])
+
     data = request.data
     sensor_data = SensorData(
         device=device,
         temperature=data.get('temperature'),
         humidity=data.get('humidity'),
-        distance=data.get('distance')
+        distance=data.get('distance'),
+        sensor_type=data.get('sensor_type', 'unknown')
     )
     sensor_data.save()
+
+    # Broadcast to WebSocket group
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'device_{device_id}',
+        {
+            'type': 'sensor_update',   # maps to the sensor_update method in the consumer
+            'data': {
+                'temperature': sensor_data.temperature,
+                'humidity': sensor_data.humidity,
+                'distance': sensor_data.distance,
+                'sensor_type': sensor_data.sensor_type,
+                'timestamp': sensor_data.timestamp.strftime('%H:%M:%S'),
+            }
+        }
+    )
+
     serializer = SensorDataSerializer(sensor_data)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)    
+    return Response(serializer.data, status=status.HTTP_201_CREATED)  
 
 
 # def dashboard(request):
@@ -129,3 +160,48 @@ def dashboard_view(request):
 def logout_view(request):
     logout(request)
     return redirect('/login/')
+
+
+@api_view(['POST'])
+def register_device(request):
+    device_id = request.data.get('device_id')
+    name = request.data.get('name')
+    user_id = request.data.get('user_id')  # ESP32 sends the owner's user ID
+
+    if not device_id or not name or not user_id:
+        return Response(
+            {"error": "device_id, name, and user_id are required."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    try:
+        device = Device.objects.get(device_id=device_id)
+        return Response({
+            "message": "Device already registered.",
+            "device_id": device.device_id,
+            "api_key": device.api_key.key
+        }, status=status.HTTP_200_OK)
+
+    except Device.DoesNotExist:
+        pass
+
+    try:
+        from django.contrib.auth.models import User
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    device = Device.objects.create(
+        device_id=device_id,
+        name=name,
+        user=user
+    )
+
+    key = APIKey.generate_key()
+    APIKey.objects.create(device=device, key=key)
+
+    return Response({
+        "message": "Device registered successfully.",
+        "device_id": device.device_id,
+        "api_key": key
+    }, status=status.HTTP_201_CREATED)

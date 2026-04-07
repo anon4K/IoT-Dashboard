@@ -18,13 +18,18 @@ from django.contrib import admin
 from django.urls import path
 from dashboard.views import CustomLoginView
 from dashboard import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.dashboard_view, name='dashboard'),
     path('login/', CustomLoginView.as_view(), name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path('api/devices/register/', views.register_device, name='register_device'),
     path('api/device/<str:device_id>/data/', views.add_sensor_data, name='add_sensor_data'),
     path('api/device/<str:device_id>/data/latest/', views.get_sensor_data, name='get_sensor_data'),
     path('api/device/<str:device_id>/toggle/', views.toggle_arm, name='toggle'),
 ]
+
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])
