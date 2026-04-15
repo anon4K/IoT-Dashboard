@@ -1,40 +1,43 @@
-function refreshSensorData() {
-    document.querySelectorAll('.device-card').forEach(card => {
-        const deviceId = card.dataset.deviceId;
-        const table = card.querySelector('.sensor-table');
+// ---- WebSocket live updates ----
+document.querySelectorAll('.device-card').forEach(card => {
+    const deviceId = card.dataset.deviceId;
+    const tbody = card.querySelector('.sensor-table tbody');
 
-        fetch(`/api/device/${deviceId}/data/latest/`)
-            .then(res => res.json())
-            .then(data => {
-                let rows = `
-                    <tr>
-                        <th>Time</th>
-                        <th>Temp</th>
-                        <th>Humidity</th>
-                        <th>Distance</th>
-                        <th>Sensor</th>
-                    </tr>
-                `;
+    const ws = new WebSocket(`ws://${window.location.host}/ws/device/${deviceId}/`);
 
-                data.forEach(item => {
-                    rows += `
-                        <tr>
-                            <td>${new Date(item.timestamp).toLocaleTimeString()}</td>
-                            <td>${item.temperature}</td>
-                            <td>${item.humidity}</td>
-                            <td>${item.distance}</td>
-                            <td>${item.sensor_type}</td>
-                        </tr>
-                    `;
-                });
+    ws.onopen = () => console.log(`✅ WS connected for ${deviceId}`);
 
-                table.innerHTML = rows;
-            });
-    });
-}
+    ws.onmessage = (e) => {
+        const d = JSON.parse(e.data);
 
-setInterval(refreshSensorData, 3000);
+        // Build a new row from the incoming data
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${d.timestamp}</td>
+            <td>${d.temperature ?? '-'}</td>
+            <td>${d.humidity ?? '-'}</td>
+            <td>${d.distance ?? '-'}</td>
+            <td>${d.sensor_type}</td>
+        `;
 
+        // Highlight alert rows
+        if (d.sensor_type === 'motion' || (d.distance !== null && d.distance < 50)) {
+            row.classList.add('alert-row');
+        }
+
+        // Prepend new row at the top, keep max 10 rows
+        tbody.insertBefore(row, tbody.firstChild);
+        if (tbody.rows.length > 10) {
+            tbody.deleteRow(tbody.rows.length - 1);
+        }
+    };
+
+    ws.onerror = (e) => console.error(`❌ WS error for ${deviceId}`, e);
+    ws.onclose = () => console.log(`🔌 WS closed for ${deviceId}`);
+});
+
+
+// ---- Arm / Disarm button ----
 document.addEventListener("DOMContentLoaded", () => {
     document.body.addEventListener("click", async (e) => {
         if (!e.target.classList.contains("arm-btn")) return;
@@ -67,28 +70,3 @@ document.addEventListener("DOMContentLoaded", () => {
 function getCSRFToken() {
     return document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 }
-
-function playBuzzer() {
-    const buzzer = document.getElementById('buzzer-sound');
-    buzzer.play().catch(err => console.log("Audio play error:", err));
-}
-
-// Trigger buzzer for alert rows only
-document.querySelectorAll('.alert-row').forEach(row => {
-    const isArmed = row.closest('.device-card').querySelector('.badge').classList.contains('green');
-    if (isArmed) {
-        playBuzzer();
-    }
-});
-
-function scrollToLatestAlert() {
-    const alerts = document.querySelectorAll('.alert-row');
-    if (alerts.length > 0) {
-        const lastAlert = alerts[alerts.length - 1];
-        lastAlert.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    scrollToLatestAlert();
-});
