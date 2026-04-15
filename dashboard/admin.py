@@ -1,7 +1,8 @@
 from django.contrib import admin
-from . models import Device, SensorData, APIKey
+from . models import Device, SensorData, APIKey, Command
 # Register your models here.
 
 admin.site.register(Device)
 admin.site.register(SensorData)
 admin.site.register(APIKey)
+admin.site.register(Command)

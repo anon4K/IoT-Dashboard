@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect
-from .models import Device, SensorData, APIKey
+from .models import Device, SensorData, APIKey, Command
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from .authentication import APIKeyAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .serializers import SensorDataSerializer
+from .serializers import SensorDataSerializer, CommandSerializer
 from rest_framework import status
 from django.http import HttpResponse
 from django.contrib.auth.decorators import login_required
@@ -16,6 +16,7 @@ from django.contrib.auth.views import LoginView
 from .forms import CustomLoginForm
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.utils import timezone
 
 class CustomLoginView(LoginView):
     template_name = "dashboard/login.html"
@@ -205,3 +206,53 @@ def register_device(request):
         "device_id": device.device_id,
         "api_key": key
     }, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+def send_command(request, device_id):
+    try:
+        device = Device.objects.get(device_id=device_id)
+    except Device.DoesNotExist:
+        return Response({"error": "Device not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    command_text = request.data.get('command')
+    if not command_text:
+        return Response({"error": "command field is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    command = Command.objects.create(device=device, command=command_text)
+
+    channel_layer = get_channel_layer()
+    async_to_sync(channel_layer.group_send)(
+        f'device_{device_id}',
+        {
+            'type': 'device_command',
+            'data': {
+                'command_id': command.id,
+                'command': command.command,
+            }
+        }
+    )
+
+    serializer = CommandSerializer(command)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+@api_view(['POST'])
+@authentication_classes([APIKeyAuthentication])
+@permission_classes([IsAuthenticated])
+def acknowledge_command(request, device_id):
+    command_id = request.data.get('command_id')
+    if not command_id:
+        return Response({"error": "command_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        command = Command.objects.get(id=command_id, device__device_id=device_id)
+    except Command.DoesNotExist:
+        return Response({"error": "Command not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    command.status = 'done'
+    command.acknowledged_at = timezone.now()
+    command.save()
+
+    serializer = CommandSerializer(command)
+    return Response(serializer.data, status=status.HTTP_200_OK)

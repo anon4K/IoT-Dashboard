@@ -30,6 +30,8 @@ urlpatterns = [
     path('api/device/<str:device_id>/data/', views.add_sensor_data, name='add_sensor_data'),
     path('api/device/<str:device_id>/data/latest/', views.get_sensor_data, name='get_sensor_data'),
     path('api/device/<str:device_id>/toggle/', views.toggle_arm, name='toggle'),
+    path('api/device/<str:device_id>/command/', views.send_command, name='send_command'),
+    path('api/device/<str:device_id>/command/ack/', views.acknowledge_command, name='acknowledge_command')
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATICFILES_DIRS[0])

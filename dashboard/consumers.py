@@ -20,3 +20,10 @@ class SensorConsumer(AsyncWebsocketConsumer):
 
     async def sensor_update(self, event):
         await self.send(text_data=json.dumps(event["data"]))
+
+    async def device_command(self, event):
+        await self.send(text_data=json.dumps({
+            'type': 'command',
+            'command_id': event['data']['command_id'],
+            'command': event['data']['command'],
+        }))

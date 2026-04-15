@@ -3,9 +3,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
-from tkinter.tix import STATUS
-
-
 class Device(models.Model):
     device_id = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=100)
@@ -65,4 +62,4 @@ class Command(models.Model):
     acknowledged_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
-        return f"{self.command} for {self.device} [{self.status}]"
+        return f"{self.command} → {self.device} [{self.status}]"
