@@ -28,7 +28,6 @@
             </div>
         {% endif %}
 
-        <!-- ✅ REQUIRED WRAPPER -->
         <div class="device-card" data-device-id="{{ item.device.device_id }}">
 
             <div class="device-header">
@@ -42,6 +41,18 @@
             <button class="arm-btn" data-device-id="{{ item.device.device_id }}">
                 {% if item.device.is_armed %}Disarm{% else %}Arm{% endif %}
             </button>
+
+            <div class="command-section">
+                <input 
+                    type="text" 
+                    class="command-input" 
+                    data-device-id="{{ item.device.device_id }}"
+                    placeholder="e.g. toggle_led, restart"
+                />
+                <button class="cmd-btn" data-device-id="{{ item.device.device_id }}">
+                    Send Command
+                </button>
+            </div>
 
             <table class="sensor-table">
                 <thead>
@@ -83,8 +94,6 @@
 <form style="display:none">
     {% csrf_token %}
 </form>
-
-<audio id="buzzer-sound" src="{% static 'dashboard/buzzer.mp3' %}" preload="auto"></audio>
 
 <script src="{% static 'dashboard/dashboard.js' %}"></script>
 

@@ -67,6 +67,48 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
+
+document.addEventListener("DOMContentLoaded", () => {
+    document.body.addEventListener("click", async (e) => {
+        if (!e.target.classList.contains("cmd-btn")) return;
+
+        const deviceId = e.target.dataset.deviceId;
+        const input = document.querySelector(`.command-input[data-device-id="${deviceId}"]`);
+        const command = input.value.trim();
+
+        if (!command) {
+            alert("Please enter a command.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/device/${deviceId}/command/`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCSRFToken(),
+                },
+                body: JSON.stringify({ command }),
+            });
+
+            if (!response.ok) {
+                alert("Failed to send command.");
+                return;
+            }
+
+            const data = await response.json();
+            console.log(`📨 Command sent:`, data);
+            input.value = '';
+            alert(`✅ Command "${command}" sent! ID: ${data.id}`);
+
+        } catch (err) {
+            console.error(err);
+            alert("Error sending command.");
+        }
+    });
+});
+
 function getCSRFToken() {
     return document.querySelector('[name=csrfmiddlewaretoken]')?.value;
 }
+
