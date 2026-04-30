@@ -1,4 +1,3 @@
-// ---- WebSocket live updates ----
 document.querySelectorAll('.device-card').forEach(card => {
     const deviceId = card.dataset.deviceId;
     const tbody = card.querySelector('.sensor-table tbody');
@@ -10,7 +9,6 @@ document.querySelectorAll('.device-card').forEach(card => {
     ws.onmessage = (e) => {
         const d = JSON.parse(e.data);
 
-        // Build a new row from the incoming data
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${d.timestamp}</td>
@@ -20,12 +18,10 @@ document.querySelectorAll('.device-card').forEach(card => {
             <td>${d.sensor_type}</td>
         `;
 
-        // Highlight alert rows
         if (d.sensor_type === 'motion' || (d.distance !== null && d.distance < 50)) {
             row.classList.add('alert-row');
         }
 
-        // Prepend new row at the top, keep max 10 rows
         tbody.insertBefore(row, tbody.firstChild);
         if (tbody.rows.length > 10) {
             tbody.deleteRow(tbody.rows.length - 1);
@@ -37,7 +33,6 @@ document.querySelectorAll('.device-card').forEach(card => {
 });
 
 
-// ---- Arm / Disarm button ----
 document.addEventListener("DOMContentLoaded", () => {
     document.body.addEventListener("click", async (e) => {
         if (!e.target.classList.contains("arm-btn")) return;
