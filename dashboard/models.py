@@ -20,7 +20,6 @@ class Device(models.Model):
             return False
         return (timezone.now() - self.last_seen).seconds < 60
 
-
 class APIKey(models.Model):                         
     device = models.OneToOneField(
         Device, on_delete=models.CASCADE, related_name='api_key'
